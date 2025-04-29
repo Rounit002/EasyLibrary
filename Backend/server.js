@@ -14,7 +14,7 @@ const app = express();
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
-      'https://librarymanage-sm1b.onrender.com',
+      'https://easylibrary.onrender.com',
       'http://localhost:8080',
       'file://'
     ];

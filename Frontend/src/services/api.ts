@@ -9,9 +9,9 @@ interface NewUserData {
 
 // Determine the API URL based on the environment
 const API_URL = window.cordova
-  ? 'https://librarymanage-sm1b.onrender.com/api'
+  ? 'https://easylibrary.onrender.com/api'
   : process.env.NODE_ENV === 'production'
-    ? 'https://librarymanage-sm1b.onrender.com/api'
+    ? 'https://easylibrary.onrender.com/api'
     : 'http://localhost:3000/api';
 const apiClient = axios.create({
   baseURL: API_URL,
