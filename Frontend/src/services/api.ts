@@ -1,13 +1,11 @@
 import axios from 'axios';
 
-// Define interfaces for type safety
 interface NewUserData {
   username: string;
   password: string;
   role: 'admin' | 'staff';
 }
 
-// Determine the API URL based on the environment
 const API_URL = window.cordova
   ? 'https://easylibrary.onrender.com/api'
   : process.env.NODE_ENV === 'production'
@@ -18,7 +16,41 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// Response interceptor to transform snake_case to camelCase and handle errors
+const transformKeysToCamelCase = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => transformKeysToCamelCase(item));
+  } else if (obj && typeof obj === 'object') {
+    const newObj: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      newObj[camelKey] = transformKeysToCamelCase(value);
+    }
+    return newObj;
+  }
+  return obj;
+};
+
+const transformKeysToSnakeCase = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => transformKeysToSnakeCase(item));
+  } else if (obj && typeof obj === 'object') {
+    const newObj: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      newObj[snakeKey] = transformKeysToSnakeCase(value);
+    }
+    return newObj;
+  }
+  return obj;
+};
+
+apiClient.interceptors.request.use((config) => {
+  if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+    config.data = transformKeysToSnakeCase(config.data);
+  }
+  return config;
+});
+
 apiClient.interceptors.response.use(
   (response) => {
     if (response.data && typeof response.data === 'object') {
@@ -40,23 +72,7 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Utility function to convert snake_case to camelCase
-const transformKeysToCamelCase = (obj: any): any => {
-  if (Array.isArray(obj)) {
-    return obj.map((item) => transformKeysToCamelCase(item));
-  } else if (obj && typeof obj === 'object') {
-    const newObj: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      newObj[camelKey] = transformKeysToCamelCase(value);
-    }
-    return newObj;
-  }
-  return obj;
-};
-
 const api = {
-  // Auth methods
   login: async ({ username, password }: { username: string; password: string }) => {
     try {
       const response = await apiClient.post('/auth/login', { username, password });
@@ -95,7 +111,6 @@ const api = {
     }
   },
 
-  // Student methods
   getStudents: async () => {
     try {
       const response = await apiClient.get('/students');
@@ -189,7 +204,6 @@ const api = {
     }
   },
 
-  // Schedule methods
   getSchedules: async () => {
     try {
       const response = await apiClient.get('/schedules');
@@ -235,7 +249,6 @@ const api = {
     }
   },
 
-  // User profile methods
   getUserProfile: async () => {
     try {
       const response = await apiClient.get('/users/profile');
@@ -254,7 +267,6 @@ const api = {
     }
   },
 
-  // Updated method for adding users
   addUser: async (userData: NewUserData) => {
     try {
       console.log('Sending user data to server:', userData);
@@ -294,10 +306,65 @@ const api = {
     }
   },
 
-  // New method for getting students by shift
   getStudentsByShift: async (shiftId: string, filters: { search?: string; status?: string }) => {
     try {
       const response = await apiClient.get(`/students/shift/${shiftId}`, { params: filters });
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  getSeats: async (shiftId?: string) => {
+    try {
+      const response = await apiClient.get('/seats', { params: { shiftId } });
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  addSeats: async (data: { seatNumbers: string }) => {
+    try {
+      const response = await apiClient.post('/seats', data);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  deleteSeat: async (id: string) => {
+    try {
+      const response = await apiClient.delete(`/seats/${id}`);
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  uploadImage: async (imageData: FormData) => {
+    try {
+      const response = await apiClient.post('/upload-image', imageData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  getSettings: async () => {
+    try {
+      const response = await apiClient.get('/settings');
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  updateSettings: async (settingsData: any) => {
+    try {
+      const response = await apiClient.put('/settings', settingsData);
       return response.data;
     } catch (error: any) {
       throw error;

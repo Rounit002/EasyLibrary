@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '../services/api';
 import Select from 'react-select';
 
-const AddStudentForm: React.FC = () => {
+const EditStudentForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
@@ -15,26 +16,39 @@ const AddStudentForm: React.FC = () => {
     shiftId: '',
     seatId: null as number | null,
     fee: '',
-    image: null as File | null,
-    imageUrl: '',
-    address: '',
   });
   const [shifts, setShifts] = useState<any[]>([]);
   const [seats, setSeats] = useState<any[]>([]);
   const [loadingSeats, setLoadingSeats] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchShifts = async () => {
+    const fetchStudentAndShifts = async () => {
       try {
-        const shiftsResponse = await api.getSchedules();
+        const [studentResponse, shiftsResponse] = await Promise.all([
+          api.getStudent(id!),
+          api.getSchedules(),
+        ]);
+        setFormData({
+          name: studentResponse.name || '',
+          email: studentResponse.email || '',
+          phone: studentResponse.phone || '',
+          membershipStart: studentResponse.membershipStart || '',
+          membershipEnd: studentResponse.membershipEnd || '',
+          shiftId: studentResponse.shiftId || '',
+          seatId: studentResponse.seatId || null,
+          fee: studentResponse.fee ? studentResponse.fee.toString() : '',
+        });
         setShifts(shiftsResponse.schedules);
       } catch (error) {
-        console.error('Failed to fetch shifts:', error);
-        toast.error('Failed to load shifts');
+        console.error('Failed to fetch data:', error);
+        toast.error('Failed to load student or shifts');
+      } finally {
+        setLoading(false);
       }
     };
-    fetchShifts();
-  }, []);
+    fetchStudentAndShifts();
+  }, [id]);
 
   useEffect(() => {
     const fetchSeats = async () => {
@@ -42,7 +56,9 @@ const AddStudentForm: React.FC = () => {
         setLoadingSeats(true);
         try {
           const seatsResponse = await api.getSeats(formData.shiftId);
-          setSeats(seatsResponse.seats);
+          const currentSeat = seatsResponse.seats.find((seat: any) => seat.id === formData.seatId);
+          const availableSeats = seatsResponse.seats.filter((seat: any) => !seat.isAssigned || seat.id === formData.seatId);
+          setSeats(availableSeats);
         } catch (error) {
           console.error('Failed to fetch seats:', error);
           toast.error('Failed to load seats');
@@ -54,86 +70,45 @@ const AddStudentForm: React.FC = () => {
       }
     };
     fetchSeats();
-  }, [formData.shiftId]);
+  }, [formData.shiftId, formData.seatId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files ? e.target.files[0] : null;
-    if (file) {
-      if (file.size > 200 * 1024) {
-        toast.error('Image size exceeds 200KB limit');
-        return;
-      }
-      setFormData((prev) => ({ ...prev, image: file }));
-    }
-  };
-
-  const availableSeats = seats.filter((seat: any) => !seat.isAssigned);
+  const availableSeats = seats.filter((seat: any) => !seat.isAssigned || seat.id === formData.seatId);
   const seatOptions = [
     { value: null, label: 'None' },
     ...availableSeats.map((seat: any) => ({ value: seat.id, label: seat.seatNumber })),
   ];
 
   const handleSubmit = async () => {
-    // Validate required fields
-    const requiredFields = [
-      { key: 'name', label: 'Name' },
-      { key: 'email', label: 'Email' },
-      { key: 'phone', label: 'Phone' },
-      { key: 'membershipStart', label: 'Membership Start' },
-      { key: 'membershipEnd', label: 'Membership End' },
-    ];
-
-    for (const field of requiredFields) {
-      const value = formData[field.key as keyof typeof formData];
-      if (!value || (typeof value === 'string' && value.trim() === '')) {
-        toast.error(`${field.label} is required`);
-        return;
-      }
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error('Please enter a valid email address');
+    if (!formData.phone.trim()) {
+      toast.error('Phone number is required');
       return;
     }
-
     try {
-      let imageUrl = '';
-      if (formData.image) {
-        const imageFormData = new FormData();
-        imageFormData.append('image', formData.image);
-        const uploadResponse = await api.uploadImage(imageFormData);
-        imageUrl = uploadResponse.imageUrl;
-      }
-
-      const studentData = {
+      const response = await api.updateStudent(id!, {
         ...formData,
-        shiftId: formData.shiftId ? parseInt(formData.shiftId, 10) : null,
         seatId: formData.seatId,
         fee: formData.fee ? parseFloat(formData.fee) : null,
-        status: 'active',
-        profileImageUrl: imageUrl,
-        address: formData.address.trim() || null, // Convert empty string to null
-      };
-
-      const response = await api.addStudent(studentData);
-      toast.success('Student added successfully');
+      });
+      toast.success('Student updated successfully');
       navigate('/students');
     } catch (error: any) {
-      console.error('Failed to add student:', error);
-      toast.error(error.message || 'Failed to add student');
+      console.error('Failed to update student:', error);
+      toast.error(error.message || 'Failed to update student');
     }
   };
 
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Add New Student</h1>
+      <h1 className="text-2xl font-bold mb-6">Edit Student</h1>
       <div className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -174,19 +149,6 @@ const AddStudentForm: React.FC = () => {
             value={formData.phone}
             onChange={handleChange}
             required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
-          />
-        </div>
-        <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-            Address
-          </label>
-          <input
-            type="text"
-            id="address"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
           />
         </div>
@@ -272,35 +234,15 @@ const AddStudentForm: React.FC = () => {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
           />
         </div>
-        <div>
-          <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
-            Profile Image
-          </label>
-          <input
-            type="file"
-            id="image"
-            name="image"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
-          />
-          {formData.image && (
-            <img
-              src={URL.createObjectURL(formData.image)}
-              alt="Preview"
-              className="mt-2 max-w-xs rounded"
-            />
-          )}
-        </div>
         <button
           onClick={handleSubmit}
           className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-200"
         >
-          Add Student
+          Update Student
         </button>
       </div>
     </div>
   );
 };
 
-export default AddStudentForm;
+export default EditStudentForm;

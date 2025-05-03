@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Calendar, Settings, ChevronRight, UserCheck, AlertTriangle, Menu, X, Clock } from 'lucide-react';
+import { Home, Users, Calendar, Settings, ChevronRight, UserCheck, AlertTriangle, Menu, X, Clock, LayoutGrid } from 'lucide-react';
 import { useMediaQuery } from 'react-responsive';
 
 interface SidebarProps {
@@ -22,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
     { path: '/students', icon: <Users size={20} />, label: 'Students', hasDropdown: true },
     { path: '/schedule', icon: <Calendar size={20} />, label: 'Schedule' },
     { path: '/shifts', icon: <Clock size={20} />, label: 'Shifts' },
+    { path: '/seats', icon: <LayoutGrid size={20} />, label: 'Seats' },
     { path: '/settings', icon: <Settings size={20} />, label: 'Settings' },
   ];
 
@@ -51,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {
             <div className="flex items-center gap-2">
               <div className="bg-gradient-radial from-purple-300 to-orange-200 h-10 w-10 rounded-full"></div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-orange-400 text-transparent bg-clip-text">
-                Shivaay Library
+                Library Management
               </h1>
             </div>
           )}

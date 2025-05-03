@@ -40,6 +40,11 @@ interface NewUserData {
   permissions: string[];
 }
 
+interface SettingsData {
+  brevoTemplateId: string;
+  daysBeforeExpiration: string;
+}
+
 // Default permissions for staff users
 const defaultStaffPermissions = ['view_dashboard', 'manage_students', 'manage_schedules'];
 
@@ -69,6 +74,13 @@ const Settings = () => {
     enabled: user?.role === 'admin',
   });
 
+  // Fetch settings (admin only)
+  const { data: settings, isLoading: settingsLoading, error: settingsError } = useQuery<SettingsData>({
+    queryKey: ['settings'],
+    queryFn: api.getSettings,
+    enabled: user?.role === 'admin',
+  });
+
   // Initialize form states
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -85,6 +97,11 @@ const Settings = () => {
     permissions: [],
   });
 
+  const [settingsForm, setSettingsForm] = useState<SettingsData>({
+    brevoTemplateId: '',
+    daysBeforeExpiration: '',
+  });
+
   // Populate form with fetched profile data
   useEffect(() => {
     if (userProfile?.user) {
@@ -95,6 +112,16 @@ const Settings = () => {
       }));
     }
   }, [userProfile]);
+
+  // Populate settings form
+  useEffect(() => {
+    if (settings) {
+      setSettingsForm({
+        brevoTemplateId: settings.brevoTemplateId || '',
+        daysBeforeExpiration: settings.daysBeforeExpiration || '',
+      });
+    }
+  }, [settings]);
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,6 +138,11 @@ const Settings = () => {
       }
       return updatedData;
     });
+  };
+
+  const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSettingsForm((prev) => ({ ...prev, [name]: value }));
   };
 
   // Mutations
@@ -165,6 +197,17 @@ const Settings = () => {
     },
   });
 
+  const settingsMutation = useMutation({
+    mutationFn: (data: any) => api.updateSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      toast.success('Settings updated successfully!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update settings');
+    },
+  });
+
   // Form submission handlers
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,6 +252,15 @@ const Settings = () => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       deleteUserMutation.mutate(userId);
     }
+  };
+
+  const handleSettingsUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updateData = {
+      brevo_template_id: settingsForm.brevoTemplateId,
+      days_before_expiration: parseInt(settingsForm.daysBeforeExpiration),
+    };
+    settingsMutation.mutate(updateData);
   };
 
   // Render logic
@@ -335,6 +387,56 @@ const Settings = () => {
                   </form>
                 </div>
               </div>
+              {/* Brevo Email Settings (Admin Only) */}
+              {user?.role === 'admin' && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="p-5 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold">Brevo Email Settings</h3>
+                  </div>
+                  <div className="p-5">
+                    {settingsLoading ? (
+                      <div>Loading settings...</div>
+                    ) : settingsError ? (
+                      <div>Error loading settings: {(settingsError as Error).message}</div>
+                    ) : (
+                      <form onSubmit={handleSettingsUpdate}>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label htmlFor="brevoTemplateId" className="text-sm font-medium">
+                              Brevo Template ID
+                            </label>
+                            <Input
+                              id="brevoTemplateId"
+                              name="brevoTemplateId"
+                              value={settingsForm.brevoTemplateId}
+                              onChange={handleSettingsChange}
+                              placeholder="Enter Brevo template ID"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label htmlFor="daysBeforeExpiration" className="text-sm font-medium">
+                              Days Before Expiration
+                            </label>
+                            <Input
+                              id="daysBeforeExpiration"
+                              name="daysBeforeExpiration"
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={settingsForm.daysBeforeExpiration}
+                              onChange={handleSettingsChange}
+                              placeholder="Enter number of days"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-6 flex justify-end">
+                          <Button type="submit">Save Settings</Button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              )}
               {/* Create New User (Admin Only) */}
               {user?.role === 'admin' && (
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

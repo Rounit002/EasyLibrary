@@ -16,6 +16,8 @@ import Settings from './pages/Settings';
 import AdminRoute from './components/AdminRoute';
 import AddUserForm from './components/AddUserForm';
 import AddStudentForm from './components/AddStudentForm';
+import EditStudentForm from './components/EditStudentForm';
+import SeatsPage from './pages/SeatsPage';
 import ShiftList from './pages/ShiftList';
 import ShiftStudents from './pages/ShiftStudents';
 
@@ -35,15 +37,17 @@ function AppRoutes() {
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/students" element={<ProtectedRoute><AllStudents /></ProtectedRoute>} />
       <Route path="/students/add" element={<ProtectedRoute><AddStudentForm /></ProtectedRoute>} />
+      <Route path="/students/:id" element={<ProtectedRoute><StudentDetails /></ProtectedRoute>} />
+      <Route path="/students/:id/edit" element={<ProtectedRoute><EditStudentForm /></ProtectedRoute>} />
       <Route path="/active-students" element={<ProtectedRoute><ActiveStudents /></ProtectedRoute>} />
       <Route path="/expired-memberships" element={<ProtectedRoute><ExpiredMemberships /></ProtectedRoute>} />
       <Route path="/expiring-memberships" element={<ProtectedRoute><ExpiringMembershipsPage /></ProtectedRoute>} />
       <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
       <Route path="/shifts" element={<ProtectedRoute><ShiftList /></ProtectedRoute>} />
       <Route path="/shifts/:id/students" element={<ProtectedRoute><ShiftStudents /></ProtectedRoute>} />
+      <Route path="/seats" element={<ProtectedRoute><SeatsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/users/new" element={<AdminRoute><AddUserForm /></AdminRoute>} />
-      <Route path="/students/:id" element={<ProtectedRoute><StudentDetails /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
